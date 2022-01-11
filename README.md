@@ -1,16 +1,9 @@
 # ayyuby_test_jti
 
-A new Flutter project.
+fitur:
+- gps
+- encrypt
+- sign in with google
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![image](https://user-images.githubusercontent.com/18584572/148875639-60c2d68a-d81e-4f35-b923-7db8c6cdf883.png)
+![image](https://user-images.githubusercontent.com/18584572/148875679-11e9908d-c35f-44ee-89aa-464d4c1845eb.png)
