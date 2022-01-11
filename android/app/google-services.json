@@ -60,6 +60,14 @@
           }
         },
         {
+          "client_id": "990208478332-ub03miavehlofhbf2fkmip63brp0bm0c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ayyuby.jti",
+            "certificate_hash": "48d0c92dea2951756420dd4a9d7c4259e099cd78"
+          }
+        },
+        {
           "client_id": "990208478332-2p5gb83ji1vou1vacs1l37m8usk6v0f5.apps.googleusercontent.com",
           "client_type": 3
         }

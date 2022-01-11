@@ -1,9 +1,16 @@
+import 'dart:convert';
 import 'package:ayyuby_test_jti/const/google_sign_in.dart';
+import 'package:ayyuby_test_jti/helper/route_helper.dart';
+import 'package:ayyuby_test_jti/model/profile_model.dart';
+import 'package:ayyuby_test_jti/view/dashboard_page.dart';
+import 'package:ayyuby_test_jti/widgets/google_text_widgets.dart';
+import 'package:ayyuby_test_jti/widgets/ripple_button_widget.dart';
 import 'package:ayyuby_test_jti/widgets/unfocus_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:encrypt/encrypt.dart' as k;
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -13,127 +20,88 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  String _latlong = '';
-  String _googleName = '';
-
-  get _btnStyl {
-    return ElevatedButton.styleFrom(
-      elevation: 0,
-      primary: Colors.blue[600],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-    );
+  void saveProfileToLocal(GoogleSignInAccount account) async {
+    final _prefs = await prefs;
+    final _map = {
+      "name": account.displayName,
+      "photo": account.photoUrl,
+      "email": account.email,
+    };
+    _prefs.setString("profile", json.encode(_map));
   }
 
-  get _signInWithGoogle {
-    return ElevatedButton(
-      style: _btnStyl,
-      onPressed: _googleName.isNotEmpty ? _handleSignOut : _handleSignIn,
-      child: Text(_googleName.isNotEmpty ? "Logout" : "Login with Google"),
-    );
+  void getProfileFromLocal() async {
+    final SharedPreferences _prefs = await prefs;
+    final _get = _prefs.getString("profile");
+    if (_get != null) {
+      final _json = json.decode(_get);
+      final _model = ProfileModel(
+        email: _json['email'],
+        name: _json['name'],
+        photo: _json['photo'],
+      );
+      RouteHelper.off(
+        context,
+        DashboardPage(response: _model),
+      );
+    }
   }
 
-  get _encryptWidget {
-    return Column(
-      children: [
-        _encryptForm,
-        Text(
-          "encrypt: " + encryptText,
-          textAlign: TextAlign.center,
+  RichText get _descLogin => RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          text: "Masuk dengan mudah melalui akun ",
+          style: GoogleFonts.sourceSansPro(
+            fontSize: 22,
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+          children: googleText,
         ),
-        Text(
-          "decrypt: " + decrypted,
-          textAlign: TextAlign.center,
+      );
+
+  get _loginBtn => Container(
+        height: 50,
+        width: 270,
+        // padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0XFFE8E8E8),
+          ),
         ),
-      ],
-    );
-  }
-
-  get _encryptForm {
-    return Form(
-      key: _formKey,
-      child: Column(
-        children: [
-          TextFormFieldC(
-            ctrl: _textCtrl,
-            caption: "Text to Encrypt",
+        child: RippleButtonWidget(
+          isBlackRipple: true,
+          borderRadius: BorderRadius.circular(10),
+          onTap: _handleSignIn,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                "assets/google_logo.svg",
+                height: 25,
+              ),
+              const SizedBox(width: 15),
+              Text(
+                "Masuk dengan Google",
+                style: GoogleFonts.sourceSansPro(
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            ],
           ),
-          TextFormFieldC(
-            ctrl: _keyCtrl,
-            isKey: true,
-            caption: "key (panjang harus 16)",
-          ),
-          // const SizedBox(height: 15),
-          ElevatedButton(
-            onPressed: aesEncrypt,
-            style: _btnStyl,
-            child: const Text(
-              "AES encrypt",
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 
-  get _userGoogleName {
-    return (_googleName.isNotEmpty)
-        ? Text("Welcome: " + _googleName)
-        : const SizedBox();
-  }
-
-  Future<Position?> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      const _deniedMsg = 'Location permissions are permanently denied.';
-      return Future.error(_deniedMsg);
-    }
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) {
-      return Geolocator.getCurrentPosition();
-    }
-  }
+  get _imgLogin => SvgPicture.asset(
+        "assets/login_image.svg",
+        height: 175,
+      );
 
   @override
   void initState() {
-    _determinePosition().then((value) {
-      setState(() {
-        _latlong = value.toString();
-      });
-    }).onError((error, stackTrace) {
-      setState(() {
-        _latlong = "$error";
-      });
-    });
     super.initState();
-
-    googleSignIn.onCurrentUserChanged.listen((account) {
-      if (account != null) {
-        if (account.displayName != null) {
-          setState(() {
-            _googleName = account.displayName!;
-          });
-        }
-      }
-    });
-    googleSignIn.signInSilently();
+    getProfileFromLocal();
   }
 
   Future<void> _handleSignIn() async {
@@ -141,9 +109,18 @@ class _LoginPageState extends State<LoginPage> {
       final response = await googleSignIn.signIn();
       if (response != null) {
         if (response.displayName != null) {
-          setState(() {
-            _googleName = response.displayName!;
-          });
+          saveProfileToLocal(response);
+          final _model = ProfileModel(
+            email: response.email,
+            name: response.displayName,
+            photo: response.photoUrl,
+          );
+          RouteHelper.off(
+            context,
+            DashboardPage(
+              response: _model,
+            ),
+          );
         }
       }
     } catch (error) {
@@ -151,152 +128,29 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  _handleSignOut() {
-    googleSignIn.disconnect().then((value) {
-      setState(() {
-        _googleName = "";
-      });
-    });
-  }
-
-  final _formKey = GlobalKey<FormState>();
-  final _textCtrl = TextEditingController(text: 'Halo Dunia');
-  final _keyCtrl = TextEditingController(text: "rahasia--rahasia");
-  String encryptText = '';
-  String decrypted = '';
-
-  final iv = k.IV.fromLength(16);
-
-  void aesEncrypt() {
-    final _formState = _formKey.currentState;
-    if (_formState != null && _formState.validate()) {
-      final key = k.Key.fromUtf8(_keyCtrl.text);
-      final encrypter = k.Encrypter(k.AES(key));
-
-      final encrypted = encrypter.encrypt(_textCtrl.text, iv: iv);
-      debugPrint(encrypted.base64);
-      setState(() {
-        encryptText = encrypted.base64;
-        decrypted = encrypter.decrypt(encrypted, iv: iv);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: UnfocusWidget(
-        child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(85),
+          alignment: Alignment.center,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Column(
                 children: [
-                  _userGoogleName,
-                  _signInWithGoogle,
+                  _imgLogin,
+                  const SizedBox(height: 20),
+                  _descLogin,
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(25),
-                child: _encryptWidget,
-              ),
-              Text(_latlong)
+              _loginBtn
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class TextFormFieldC extends StatelessWidget {
-  final String caption;
-  final TextEditingController ctrl;
-  final bool isKey;
-
-  const TextFormFieldC({
-    Key? key,
-    required this.ctrl,
-    this.isKey = false,
-    required this.caption,
-  }) : super(key: key);
-
-  get _enabledBorder {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10.0),
-      borderSide: const BorderSide(
-        color: Color(0xFFd2ddec),
-        width: 1,
-      ),
-    );
-  }
-
-  get _inputDecor {
-    return InputDecoration(
-      counterText: isKey ? null : "",
-      hintText: "",
-      fillColor: Colors.white,
-      filled: true,
-      enabledBorder: _enabledBorder,
-      focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(
-          color: Colors.blue[700]!,
-          width: 1,
-        ),
-        gapPadding: 0,
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderSide: BorderSide(
-          color: Colors.red[700]!,
-          width: 1,
-        ),
-        gapPadding: 0,
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderSide: BorderSide(
-          color: Colors.red[700]!,
-          width: 1,
-        ),
-        gapPadding: 0,
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      contentPadding: const EdgeInsets.only(
-        left: 15,
-        bottom: 11,
-        top: 11,
-        right: 15,
-      ),
-    );
-  }
-
-  String? _validator(String? value) {
-    if (value == null || value.isEmpty) {
-      return "tidak boleh kosong";
-    } else if (isKey) {
-      if (ctrl.text.length != 16) {
-        return "panjang key harus 16";
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 15),
-        Text(caption),
-        const SizedBox(height: 10),
-        TextFormField(
-          validator: _validator,
-          maxLength: isKey ? 16 : null,
-          maxLengthEnforcement: MaxLengthEnforcement.enforced,
-          controller: ctrl,
-          decoration: _inputDecor,
-        ),
-      ],
     );
   }
 }
